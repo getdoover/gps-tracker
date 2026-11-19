@@ -74,7 +74,13 @@ def test_valid_coordinates():
 
 
 def test_fix_rejection():
-    ok = dict(fix_status=True, satellites=9, hdop=0.9, min_satellites=5, max_hdop=3.0)
+    ok = {
+        "fix_status": True,
+        "satellites": 9,
+        "hdop": 0.9,
+        "min_satellites": 5,
+        "max_hdop": 3.0,
+    }
     assert geo.fix_rejection(**ok) is None
     assert geo.fix_rejection(**{**ok, "fix_status": False}) == "receiver reports no fix"
     assert "satellites" in geo.fix_rejection(**{**ok, "satellites": 3})

@@ -11,23 +11,23 @@ class Value:
 
 
 def make_config(**overrides):
-    values = dict(
-        latitude_path="$io_state.latitude",
-        longitude_path="$io_state.longitude",
-        altitude_path="$io_state.altitude",
-        satellites_path="$io_state.satellites",
-        hdop_path="$io_state.hdop",
-        fix_status_path="$io_state.gps_fix",
-        gps_time_path="$io_state.gps_time",
-        min_satellites=None,
-        max_hdop=None,
-        reference_latitude=None,
-        reference_longitude=None,
-        bearing_offset_deg=0.0,
-        notify_on_move=False,
-        move_alert_distance_m=500.0,
-        location_min_move_m=2.0,
-    )
+    values = {
+        "latitude_path": "$io_state.latitude",
+        "longitude_path": "$io_state.longitude",
+        "altitude_path": "$io_state.altitude",
+        "satellites_path": "$io_state.satellites",
+        "hdop_path": "$io_state.hdop",
+        "fix_status_path": "$io_state.gps_fix",
+        "gps_time_path": "$io_state.gps_time",
+        "min_satellites": None,
+        "max_hdop": None,
+        "reference_latitude": None,
+        "reference_longitude": None,
+        "bearing_offset_deg": 0.0,
+        "notify_on_move": False,
+        "move_alert_distance_m": 500.0,
+        "location_min_move_m": 2.0,
+    }
     values.update(overrides)
     return SimpleNamespace(**{k: Value(v) for k, v in values.items()})
 
