@@ -25,11 +25,12 @@ quality fields out of those messages and turns them into:
 - an optional **notification** when the device moves further than a set distance from that
   reference point.
 
-It is read-only: it never sends anything to the device.
+It is read-only and has no panel of its own on the device page: its output is the device's
+position on the map plus the tags below. It never sends anything to the device.
 
 Fixes that are not good enough are ignored rather than plotted: a receiver reporting no fix,
 a 0,0 position, or (when configured) too few satellites or too high an HDOP. The last good
-position stays on the map, and the page shows why the latest reading was set aside.
+position stays on the map, and the `fix_quality` tag says why the latest reading was set aside.
 
 <br/>
 
@@ -72,8 +73,7 @@ With both reference coordinates set, every good fix also publishes:
 
 On a centre pivot with the receiver on the end tower and the reference point at the pivot
 centre, `bearing_deg` is the pivot's angle. Set the Bearing Offset if the pivot's own 0° is
-not North. While no reference point is set, neither tag is published and the page hides
-them.
+not North. While no reference point is set, neither tag is published.
 
 <br/>
 
@@ -94,7 +94,7 @@ them.
 
 Other apps on the same device read these as `{app_key}` / `{tag_name}`, for example a pivot
 app reading `bearing_deg` from this app's install. Until a first good fix arrives every
-tag is empty and the page shows no reading.
+tag is empty.
 
 <br/>
 

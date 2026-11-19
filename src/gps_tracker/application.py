@@ -8,7 +8,6 @@ from . import geo
 from .app_config import GpsTrackerConfig
 from .app_notifications import GpsTrackerNotifications
 from .app_tags import GpsTrackerTags
-from .app_ui import GpsTrackerUI, has_reference_point
 
 log = logging.getLogger(__name__)
 
@@ -26,16 +25,27 @@ _OPTIONAL_PATHS = {
     "gps_time": "gps_time_path",
 }
 
+def has_reference_point(config) -> bool:
+    """Whether both reference coordinates are set (bearing/distance need both)."""
+    if config is None:
+        return False
+    lat = getattr(config, "reference_latitude", None)
+    lon = getattr(config, "reference_longitude", None)
+    return (
+        lat is not None
+        and lon is not None
+        and lat.value is not None
+        and lon.value is not None
+    )
+
 
 class GpsTrackerApplication(Application):
     config: GpsTrackerConfig
     tags: GpsTrackerTags
-    ui: GpsTrackerUI
     notifications: GpsTrackerNotifications
 
     config_cls = GpsTrackerConfig
     tags_cls = GpsTrackerTags
-    ui_cls = GpsTrackerUI
     notifications_cls = GpsTrackerNotifications
 
     async def setup(self):

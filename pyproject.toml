@@ -10,7 +10,6 @@ dependencies = [
 
 [project.scripts]
 export-config = "gps_tracker.app_config:export"
-export-ui = "gps_tracker.app_ui:export"
 export-notifications = "gps_tracker.app_notifications:export"
 
 [build-system]
