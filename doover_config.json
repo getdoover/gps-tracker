@@ -1,0 +1,29 @@
+{
+    "gps_tracker": {
+        "name": "gps_tracker",
+        "display_name": "GPS Tracker",
+        "type": "PRO",
+        "visibility": "PUB",
+        "allow_many": true,
+        "description": "Turns raw GPS fields in a device's messages into its location on the Doover map, with position tags and an optional bearing and distance from a reference point.",
+        "long_description": "README.md",
+        "depends_on": [],
+        "organisation_id": 93957122026437134,
+        "export_config_command": "export-config",
+        "export_ui_command": "export-ui",
+        "lambda_config": {
+            "Environment": {},
+            "Runtime": "python3.13",
+            "Timeout": 60,
+            "Handler": "src.gps_tracker.handler",
+            "MemorySize": 128,
+            "Architectures": [
+                "arm64"
+            ]
+        },
+        "export_notification_command": "export-notifications",
+        "repository_url": "https://github.com/getdoover/gps-tracker",
+        "data_access": "read_only",
+        "has_ui": true
+    }
+}
