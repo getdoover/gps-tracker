@@ -8,6 +8,7 @@ from . import geo
 from .app_config import GpsTrackerConfig
 from .app_notifications import GpsTrackerNotifications
 from .app_tags import GpsTrackerTags
+from .app_ui import GpsTrackerUI
 
 log = logging.getLogger(__name__)
 
@@ -42,10 +43,12 @@ def has_reference_point(config) -> bool:
 class GpsTrackerApplication(Application):
     config: GpsTrackerConfig
     tags: GpsTrackerTags
+    ui: GpsTrackerUI
     notifications: GpsTrackerNotifications
 
     config_cls = GpsTrackerConfig
     tags_cls = GpsTrackerTags
+    ui_cls = GpsTrackerUI
     notifications_cls = GpsTrackerNotifications
 
     async def setup(self):

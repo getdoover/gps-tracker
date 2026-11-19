@@ -11,6 +11,7 @@
         "depends_on": [],
         "organisation_id": null,
         "export_config_command": "export-config",
+        "export_ui_command": "export-ui",
         "lambda_config": {
             "Environment": {},
             "Runtime": "python3.13",
@@ -24,7 +25,6 @@
         "export_notification_command": "export-notifications",
         "repository_url": "https://github.com/getdoover/gps-tracker",
         "data_access": "read_only",
-        "has_ui": false,
-        "generate_ui": false
+        "has_ui": false
     }
 }
