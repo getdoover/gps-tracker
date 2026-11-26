@@ -25,3 +25,6 @@ class GpsTrackerTags(Tags):
     # Whether the last good fix was beyond the alert distance; the notification
     # fires on the change to True only.
     moved_away = Tag("boolean", default=None)
+    # The inputs this app reads and their message paths, for the edge bridge:
+    # {"version": 1, "points": [{"id", "label", "kind", "path", "auto"}]}.
+    io_points = Tag("object", default=None)

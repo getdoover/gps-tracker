@@ -4,8 +4,10 @@ from pydoover import config
 from pydoover.config import ApplicationPosition
 from pydoover.processor import ManySubscriptionConfig
 
-_PATH_HELP = "Use '$channel.path.to.value', for example '$io_state.latitude'."
-_OPTIONAL_PATH_HELP = " Optional: clear it if the source does not send this value."
+_PATH_HELP = (
+    " Leave blank to use this input's automatic address, which the edge bridge "
+    "fills in. Or give a message path, e.g. '$io_state.x'."
+)
 
 
 class GpsTrackerConfig(config.Schema):
@@ -13,66 +15,62 @@ class GpsTrackerConfig(config.Schema):
     latitude_path = config.String(
         "Latitude Message Path",
         name="latitude_path",
-        description=f"Message path holding the latitude in decimal degrees. {_PATH_HELP}",
-        default="$io_state.latitude",
+        description="Latitude in decimal degrees." + _PATH_HELP,
+        default="",
         position=1,
     )
     longitude_path = config.String(
         "Longitude Message Path",
         name="longitude_path",
         description=(
-            "Message path holding the longitude in decimal degrees. Must be on the "
-            "same channel as the latitude, so both come from the same message."
+            "Longitude in decimal degrees. Must be on the same channel as the "
+            "latitude, so both come from the same message." + _PATH_HELP
         ),
-        default="$io_state.longitude",
+        default="",
         position=2,
     )
     altitude_path = config.String(
         "Altitude Message Path",
         name="altitude_path",
-        description="Message path holding the altitude in metres."
-        + _OPTIONAL_PATH_HELP,
-        default="$io_state.altitude",
+        description="Altitude in metres." + _PATH_HELP,
+        default="",
         position=3,
     )
     satellites_path = config.String(
         "Satellites Message Path",
         name="satellites_path",
-        description="Message path holding the number of satellites in use."
-        + _OPTIONAL_PATH_HELP,
-        default="$io_state.satellites",
+        description="Number of satellites in use." + _PATH_HELP,
+        default="",
         position=4,
     )
     hdop_path = config.String(
         "HDOP Message Path",
         name="hdop_path",
         description=(
-            "Message path holding the horizontal dilution of precision (HDOP); lower "
-            "is better." + _OPTIONAL_PATH_HELP
+            "Horizontal dilution of precision (HDOP); lower is better." + _PATH_HELP
         ),
-        default="$io_state.hdop",
+        default="",
         position=5,
     )
     fix_status_path = config.String(
         "Fix Status Message Path",
         name="fix_status_path",
         description=(
-            "Message path holding the receiver's fix status: true/false, a fix quality "
-            "number (0 = no fix), or text such as '3D' or 'no fix'. A reading of no fix "
-            "is ignored." + _OPTIONAL_PATH_HELP
+            "The receiver's fix status: true/false, a fix quality number (0 = no "
+            "fix), or text such as '3D' or 'no fix'. A reading of no fix is ignored."
+            + _PATH_HELP
         ),
-        default="$io_state.gps_fix",
+        default="",
         position=6,
     )
     gps_time_path = config.String(
         "GPS Time Message Path",
         name="gps_time_path",
         description=(
-            "Message path holding the time of the fix, as epoch seconds or milliseconds "
-            "or an ISO 8601 string. Without it, the time the message arrived is used."
-            + _OPTIONAL_PATH_HELP
+            "Time of the fix, as epoch seconds or milliseconds or an ISO 8601 "
+            "string. Without it, the time the message arrived is used." + _PATH_HELP
         ),
-        default="$io_state.gps_time",
+        default="",
         position=7,
     )
 

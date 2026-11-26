@@ -64,6 +64,31 @@ def parse_path(value: Any) -> tuple[str, list[str]] | None:
     return channel, parts
 
 
+# The channel every automatic input address is on.
+AUTO_CHANNEL = "io_state"
+
+
+def auto_path(app_key: str, point_id: str) -> str:
+    """An input's automatic address: '$io_state.<app key>.<point id>'."""
+    return f"${AUTO_CHANNEL}.{app_key}.{point_id}"
+
+
+def resolve_path(value: Any, app_key: str | None, point_id: str) -> tuple[Any, bool]:
+    """The message path an input is read from, and whether it is automatic.
+
+    A blank path means the input's automatic address. An explicit path is
+    returned as given (stripped), to be checked by `parse_path`. Without an
+    app key there is no automatic address, so a blank path reads nothing.
+    """
+    if value is None or (isinstance(value, str) and not value.strip()):
+        if not app_key:
+            return None, True
+        return auto_path(app_key, point_id), True
+    if isinstance(value, str):
+        return value.strip(), False
+    return value, False
+
+
 def extract(data: Any, path: list[str]) -> Any:
     """The value at `path` in a message's data, or None if any step is missing."""
     value = data

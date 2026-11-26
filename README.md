@@ -36,20 +36,29 @@ position stays on the map, and the `fix_quality` tag says why the latest reading
 
 ## Configuration
 
-Every input is a **message path**, `$<channel>.<path.to.value>`, read from messages on the
-subscribed channels. Nested values use dots (`$io_state.gps.lat`), list items their index
-(`$io_state.fixes.0.lat`). Latitude and longitude must be on the same channel; an optional
-field is only read from that same message, and clearing an optional path turns it off.
+Each input has its own **automatic address**, so in most installs the input paths are
+left blank. A blank path reads the value from `$io_state.<app key>.<point id>`, for example
+`$io_state.gps_tracker_1.latitude`, which the edge bridge fills in. The point ids are
+`latitude`, `longitude`, `altitude`, `satellites`, `hdop`, `fix_status` and `gps_time`.
+The app lists its inputs and their addresses in the `io_points` tag (see [Tags](#tags)),
+so the bridge knows where to put each value.
+
+To read a value from somewhere else, give a **message path**, `$<channel>.<path.to.value>`,
+read from messages on the subscribed channels. Nested values use dots (`$io_state.gps.lat`),
+list items their index (`$io_state.fixes.0.lat`). An explicit path always wins over the
+automatic address. Latitude and longitude must be on the same channel, and an optional
+value is only read from that same message. An optional value the source never sends simply
+has no effect.
 
 | Setting | Key | Description | Default |
 |---------|-----|-------------|---------|
-| **Latitude Message Path** | `latitude_path` | Latitude, decimal degrees | `$io_state.latitude` |
-| **Longitude Message Path** | `longitude_path` | Longitude, decimal degrees | `$io_state.longitude` |
-| **Altitude Message Path** | `altitude_path` | Altitude, metres (optional) | `$io_state.altitude` |
-| **Satellites Message Path** | `satellites_path` | Satellites in use (optional) | `$io_state.satellites` |
-| **HDOP Message Path** | `hdop_path` | Horizontal dilution of precision (optional) | `$io_state.hdop` |
-| **Fix Status Message Path** | `fix_status_path` | Fix status (optional): `true`/`false`, a fix quality number where 0 is no fix, or text such as `3D`, `A`, `no fix`, `V` | `$io_state.gps_fix` |
-| **GPS Time Message Path** | `gps_time_path` | Time of the fix (optional): epoch seconds or milliseconds, or ISO 8601. Without it, the arrival time is used | `$io_state.gps_time` |
+| **Latitude Message Path** | `latitude_path` | Latitude, decimal degrees | blank (automatic) |
+| **Longitude Message Path** | `longitude_path` | Longitude, decimal degrees | blank (automatic) |
+| **Altitude Message Path** | `altitude_path` | Altitude, metres (optional) | blank (automatic) |
+| **Satellites Message Path** | `satellites_path` | Satellites in use (optional) | blank (automatic) |
+| **HDOP Message Path** | `hdop_path` | Horizontal dilution of precision (optional) | blank (automatic) |
+| **Fix Status Message Path** | `fix_status_path` | Fix status (optional): `true`/`false`, a fix quality number where 0 is no fix, or text such as `3D`, `A`, `no fix`, `V` | blank (automatic) |
+| **GPS Time Message Path** | `gps_time_path` | Time of the fix (optional): epoch seconds or milliseconds, or ISO 8601. Without it, the arrival time is used | blank (automatic) |
 | **Minimum Satellites** | `min_satellites` | Ignore fixes from fewer satellites. Empty for no minimum | empty |
 | **Maximum HDOP** | `max_hdop` | Ignore fixes with a higher HDOP, e.g. `5.0`. Empty for no maximum | empty |
 | **Reference Latitude** | `reference_latitude` | Latitude of the reference point, decimal degrees | empty |
@@ -91,10 +100,29 @@ not North. While no reference point is set, neither tag is published.
 | `bearing_deg` | number | Bearing from the reference point (0 = North, clockwise, plus offset) |
 | `distance_m` | number | Distance from the reference point, metres |
 | `fix_quality` | string | Summary of the latest reading, e.g. `Good (9 satellites, HDOP 0.9)` or `Ignored: HDOP 7 (maximum 5)` |
+| `io_points` | object | The inputs this app reads and where it reads them from, for the edge bridge (below) |
 
 Other apps on the same device read these as `{app_key}` / `{tag_name}`, for example a pivot
 app reading `bearing_deg` from this app's install. Until a first good fix arrives every
-tag is empty.
+position tag is empty.
+
+### io_points
+
+`io_points` lists every input in config order, with the path the app actually reads. It is
+set when the app is deployed and kept up to date after that. `auto` is `true` for an
+automatic address and `false` for a path given in config.
+
+```json
+{"version": 1, "points": [
+  {"id": "latitude", "label": "Latitude", "kind": "input",
+   "path": "$io_state.gps_tracker_1.latitude", "auto": true},
+  {"id": "longitude", "label": "Longitude", "kind": "input",
+   "path": "$io_state.gps_tracker_1.longitude", "auto": true}
+]}
+```
+
+The full list holds Latitude, Longitude, Altitude, Satellites, HDOP, Fix status and
+GPS time.
 
 <br/>
 
@@ -102,8 +130,14 @@ tag is empty.
 
 ### Input
 
-Messages on the subscribed channels (default `io_state`). Only the channel named in the
-latitude and longitude paths is read; a message without GPS fields is passed over.
+Messages on the subscribed channels (default `io_state`). Only the channel of the latitude
+and longitude (`io_state` for the automatic addresses) is read; a message without GPS
+fields for this app is passed over. With automatic addresses, the values sit under the
+app key:
+
+```json
+{"gps_tracker_1": {"latitude": -27.5, "longitude": 151.9, "satellites": 9, "hdop": 0.9}}
+```
 
 ### Output: location
 

@@ -59,6 +59,7 @@ TAG_NAMES = [
     "published_latitude",
     "published_longitude",
     "moved_away",
+    "io_points",
 ]
 
 
@@ -82,8 +83,9 @@ class FakeNotification:
         self.sent.append(message)
 
 
-async def make_app(**config):
+async def make_app(app_key=None, **config):
     app = object.__new__(GpsTrackerApplication)
+    app.app_key = app_key
     app.config = make_config(**config)
     app.tags = SimpleNamespace(**{name: FakeTag() for name in TAG_NAMES})
     app.api = FakeApi()
@@ -134,7 +136,8 @@ async def test_no_data_does_nothing():
     for data in ({}, {"pump_running": True}, None):
         await app.on_message_create(event(data))
     await app.on_message_create(event(GOOD, channel="ui_cmds"))
-    assert all(getattr(app.tags, n).writes == 0 for n in TAG_NAMES)
+    readings = [n for n in TAG_NAMES if n != "io_points"]
+    assert all(getattr(app.tags, n).writes == 0 for n in readings)
     assert app.api.aggregates == [] and app.api.messages == []
     assert app.notifications.moved_away.sent == []
 
@@ -235,3 +238,119 @@ async def test_no_notification_when_disabled_or_no_reference():
         app.notifications.moved_away.sent == []
         and app2.notifications.moved_away.sent == []
     )
+
+
+# -- automatic input addresses and the io_points tag ---------------------------
+
+AUTO = dict.fromkeys(
+    (
+        "latitude_path",
+        "longitude_path",
+        "altitude_path",
+        "satellites_path",
+        "hdop_path",
+        "fix_status_path",
+        "gps_time_path",
+    ),
+    "",
+)
+
+
+def test_resolve_path():
+    from gps_tracker.geo import resolve_path
+
+    assert resolve_path("", "gps_tracker_1", "latitude") == (
+        "$io_state.gps_tracker_1.latitude",
+        True,
+    )
+    assert resolve_path(None, "gps_tracker_1", "hdop") == (
+        "$io_state.gps_tracker_1.hdop",
+        True,
+    )
+    assert resolve_path("  ", "gps_tracker_1", "hdop")[1] is True
+    assert resolve_path(" $io_state.lat ", "gps_tracker_1", "latitude") == (
+        "$io_state.lat",
+        False,
+    )
+    assert resolve_path("", None, "latitude") == (None, True)
+
+
+async def test_automatic_addresses_read_nested_values():
+    app = await make_app(app_key="gps_tracker_1", **AUTO)
+    nested = {**GOOD, "gps_time": 1_795_050_000}
+    nested["fix_status"] = nested.pop("gps_fix")
+    await app.on_message_create(event({"gps_tracker_1": nested, "latitude": 1.0}))
+    t = app.tags
+    assert (t.latitude.value, t.longitude.value, t.altitude.value) == (
+        -27.5,
+        151.9,
+        410.2,
+    )
+    assert t.last_fix_ts.value == 1_795_050_000_000
+    assert t.fix_quality.value == "Good (9 satellites, HDOP 0.9)"
+    assert app.api.aggregates[0][1]["lat"] == -27.5  # map location still updated
+
+
+async def test_automatic_optional_inputs_absent_read_as_not_configured():
+    app = await make_app(app_key="gps_tracker_1", **AUTO)
+    await app.on_message_create(
+        event({"gps_tracker_1": {"latitude": -27.5, "longitude": 151.9}})
+    )
+    assert app.tags.fix_quality.value == "Good"
+    assert app.tags.altitude.writes == 0 and app.tags.satellites.writes == 0
+    assert set(app.api.aggregates[0][1]) == {"lat", "long"}
+    # another app's values on io_state are not a reading
+    app = await make_app(app_key="gps_tracker_1", **AUTO)
+    await app.on_message_create(event({"pump_control_1": {"pump_1": True}}))
+    assert app.tags.fix_ok.writes == 0 and app.api.aggregates == []
+
+
+async def test_explicit_path_wins_over_automatic():
+    app = await make_app(
+        app_key="gps_tracker_1", **{**AUTO, "latitude_path": "$io_state.gps.lat"}
+    )
+    await app.on_message_create(
+        event({"gps": {"lat": -27.4}, "gps_tracker_1": {"longitude": 151.9}})
+    )
+    assert (app.tags.latitude.value, app.tags.longitude.value) == (-27.4, 151.9)
+
+
+async def test_io_points_lists_every_input_in_order():
+    app = await make_app(
+        app_key="gps_tracker_1", **{**AUTO, "hdop_path": "$io_state.gps.hdop"}
+    )
+    await app.on_deployment(None)
+    points = app.tags.io_points.value
+    assert points["version"] == 1
+    assert [p["id"] for p in points["points"]] == [
+        "latitude",
+        "longitude",
+        "altitude",
+        "satellites",
+        "hdop",
+        "fix_status",
+        "gps_time",
+    ]
+    assert points["points"][0] == {
+        "id": "latitude",
+        "label": "Latitude",
+        "kind": "input",
+        "path": "$io_state.gps_tracker_1.latitude",
+        "auto": True,
+    }
+    hdop = points["points"][4]
+    assert (hdop["path"], hdop["auto"], hdop["label"]) == (
+        "$io_state.gps.hdop",
+        False,
+        "HDOP",
+    )
+    for p in points["points"]:
+        assert p["kind"] == "input" and "_" not in p["label"]
+
+
+async def test_io_points_written_only_when_changed():
+    app = await make_app(app_key="gps_tracker_1", **AUTO)
+    await app.on_deployment(None)
+    await app.on_deployment(None)
+    await app.on_message_create(event({}))
+    assert app.tags.io_points.writes == 1

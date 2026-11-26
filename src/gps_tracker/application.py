@@ -1,7 +1,7 @@
 import logging
 import time
 
-from pydoover.models import MessageCreateEvent
+from pydoover.models import DeploymentEvent, MessageCreateEvent
 from pydoover.processor import Application
 
 from . import geo
@@ -17,14 +17,19 @@ log = logging.getLogger(__name__)
 # the location history (track). Keys are "lat" / "long", decimal degrees.
 LOCATION_CHANNEL = "location"
 
-# Optional readings, by config field and the name they go by in this app.
-_OPTIONAL_PATHS = {
-    "altitude": "altitude_path",
-    "satellites": "satellites_path",
-    "hdop": "hdop_path",
-    "fix_status": "fix_status_path",
-    "gps_time": "gps_time_path",
-}
+# Every input: its point id (fixed; the end of its automatic address), its
+# config field and its plain-word label, in config order.
+INPUTS = (
+    ("latitude", "latitude_path", "Latitude"),
+    ("longitude", "longitude_path", "Longitude"),
+    ("altitude", "altitude_path", "Altitude"),
+    ("satellites", "satellites_path", "Satellites"),
+    ("hdop", "hdop_path", "HDOP"),
+    ("fix_status", "fix_status_path", "Fix status"),
+    ("gps_time", "gps_time_path", "GPS time"),
+)
+_OPTIONAL = ("altitude", "satellites", "hdop", "fix_status", "gps_time")
+
 
 def has_reference_point(config) -> bool:
     """Whether both reference coordinates are set (bearing/distance need both)."""
@@ -55,12 +60,35 @@ class GpsTrackerApplication(Application):
         self._channel = None
         self._lat_path = self._lon_path = None
         self._optional: dict[str, tuple[str, list[str]]] = {}
-        try:
-            lat = geo.parse_path(self.config.latitude_path.value)
-            lon = geo.parse_path(self.config.longitude_path.value)
-        except (TypeError, ValueError) as e:
-            log.error("GPS Tracker is not configured correctly: %s", e)
-            return
+        self._io_points: list[dict] = []
+
+        app_key = getattr(self, "app_key", None)
+        parsed: dict[str, tuple[str, list[str]]] = {}
+        for point_id, field, label in INPUTS:
+            element = getattr(self.config, field, None)
+            path, auto = geo.resolve_path(
+                None if element is None else element.value, app_key, point_id
+            )
+            try:
+                result = geo.parse_path(path)
+            except (TypeError, ValueError) as e:
+                log.warning("Ignoring %s: %s", field, e)
+                continue
+            if result is None:
+                continue
+            parsed[point_id] = result
+            self._io_points.append(
+                {
+                    "id": point_id,
+                    "label": label,
+                    "kind": "input",
+                    "path": path,
+                    "auto": auto,
+                }
+            )
+
+        self._optional = {k: parsed[k] for k in _OPTIONAL if k in parsed}
+        lat, lon = parsed.get("latitude"), parsed.get("longitude")
         if lat is None or lon is None:
             log.error("GPS Tracker needs both a latitude and a longitude message path.")
             return
@@ -73,16 +101,20 @@ class GpsTrackerApplication(Application):
             return
         self._channel, self._lat_path, self._lon_path = lat[0], lat[1], lon[1]
 
-        for key, field in _OPTIONAL_PATHS.items():
-            try:
-                parsed = geo.parse_path(getattr(self.config, field).value)
-            except (TypeError, ValueError) as e:
-                log.warning("Ignoring %s: %s", field, e)
-                continue
-            if parsed is not None:
-                self._optional[key] = parsed
+    async def on_deployment(self, event: DeploymentEvent):
+        await self.publish_io_points()
+
+    async def publish_io_points(self):
+        """Publish the inputs this app reads, and where, for the edge bridge.
+
+        Only written when it changed.
+        """
+        points = {"version": 1, "points": self._io_points}
+        if self.tags.io_points.get() != points:
+            await self.tags.io_points.set(points)
 
     async def on_message_create(self, event: MessageCreateEvent):
+        await self.publish_io_points()
         if self._channel is None or event.channel.name != self._channel:
             return
         await self.handle_reading(event.channel.name, event.message.data or {})

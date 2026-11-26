@@ -20,7 +20,18 @@ def test_config_schema_keys():
         "dv_proc_subscriptions",
     ):
         assert key in props
-    assert props["latitude_path"]["default"] == "$io_state.latitude"
+    # Blank: read from the input's automatic address.
+    for key in (
+        "latitude_path",
+        "longitude_path",
+        "altitude_path",
+        "satellites_path",
+        "hdop_path",
+        "fix_status_path",
+        "gps_time_path",
+    ):
+        assert props[key]["default"] == ""
+        assert "automatic address" in props[key]["description"]
     assert props["dv_proc_subscriptions"]["default"] == ["io_state"]
 
 
